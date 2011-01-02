@@ -10,6 +10,8 @@ class Redis extends AbstractBackend
     const DEFAULT_PORT =  6379;
     const DEFAULT_TIMEOUT = 1;
 
+    const DELIMITER = "\r\n";
+
     /**
      * Log message
      */
@@ -35,13 +37,22 @@ class Redis extends AbstractBackend
         $this->_connect();
     }
 
+    public function __destruct()
+    {
+        if (is_resource($this->_connection)) {
+            fclose($this->_connection);
+        }
+    }
+
     public function save($data, $id, $tags = array(), $specificLifetime = false)
     {
         //$lifetime = $this->getLifetime($specificLifetime);
         $lengthId = strlen($id);
         $lengthData = strlen($data);
-        $result = $this->_call("*3\r\n\$3\r\nSET\r\n\$$lengthId\r\n$id\r\n\$$lengthData\r\n$data\r\n");
-
+        $result = $this->_call('*3' . self::DELIMITER
+            . '$3' . self::DELIMITER . 'SET' . self::DELIMITER .
+            '$' . $lengthId . self::DELIMITER . $id . self::DELIMITER .
+            '$' . $lengthData . self::DELIMITER . $data . self::DELIMITER);
         if (count($tags) > 0) {
             $this->_log(self::TAGS_UNSUPPORTED_BY_SAVE_OF_REDIS_BACKEND);
         }
@@ -51,27 +62,24 @@ class Redis extends AbstractBackend
 
     public function remove($id)
     {
-        return $this->_call("DEL $id\r\n");
+        return $this->_call('DEL ' . $id . self::DELIMITER);
     }
 
     public function test($id)
     {
-        return (bool)$this->load($id);
+        return $this->_call('EXISTS ' . $id . self::DELIMITER);
     }
 
     public function load($id, $doNotTestCacheValidity = false)
     {
-        $data = $this->_call("GET $name\r\n");
-        var_dump($data);
-        return $data;
+        return $this->_call('GET '. $id . self::DELIMITER);
     }
 
     public function clean($mode = \Zend\Cache\Cache::CLEANING_MODE_ALL, $tags = array())
     {
         switch ($mode) {
             case \Zend\Cache\Cache::CLEANING_MODE_ALL:
-                //return $this->_write("FLUSHALL\r\n");
-                return true;
+                return $this->_call('FLUSHDB' . self::DELIMITER);
                 break;
             case \Zend\Cache\Cache::CLEANING_MODE_OLD:
                 $this->_log("Zend_Cache_Backend_Redis::clean() : CLEANING_MODE_OLD is unsupported by the Redis backend");
@@ -87,10 +95,6 @@ class Redis extends AbstractBackend
         }
     }
 
-
-    public function ___expire()
-    {}
-
     protected function _connect()
     {
         if ($this->_connection) return ;
@@ -105,21 +109,20 @@ class Redis extends AbstractBackend
 
     protected function _call($request)
     {
-        //$this->_connect();
         $this->_write($request);
         return $this->_parse();
     }
 
     protected function _write($data)
     {
-        //$this->_connect();
         if (!fwrite($this->_connection, $data)) throw new Exception('Writing data is failed');
+        return true;
     }
 
     protected function _read($length)
     {
-        //$this->_connect();
         $buffer = fread($this->_connection, $length);
+        if (!$buffer) throw new \Exception('Can\'t read data from socket');
         return $buffer;
     }
 
@@ -129,7 +132,7 @@ class Redis extends AbstractBackend
         $write = null;
         $except = null;
         stream_select($read, $write, $except, 0);
-        return $buffer = stream_get_line($this->_connection, 100, "\r\n");
+        return $buffer = stream_get_line($this->_connection, 100, self::DELIMITER);
     }
 
     public function _parse()
@@ -141,17 +144,21 @@ class Redis extends AbstractBackend
             case '+':
                 return true;
             case '$':
-                var_dump($buffer);
                 $count = (int)substr($buffer, 1);
-                $buffer = fread($this->_connection, $count+2);
-                return unserialize($buffer);
+                return substr(fread($this->_connection, $count+2), 0, -2);
+                break;
             case ':':
-                return substr($buffer, 1);
+                return (int)substr($buffer, 1);
             case '*':
                 throw new \Exception('* - is unknow result');
+            case '':
+                return true;
             default:
                 throw new \Exception('Unknow result "' . $buffer . '"');
         }
     }
+
+    public function ___expire()
+    {}
 }
 

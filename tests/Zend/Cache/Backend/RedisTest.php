@@ -10,6 +10,42 @@ class RedisTest extends \PHPUnit_Framework_TestCase
     protected $_className = 'Zend\\Cache\\Backend\\Redis';
     protected $_root  = '/tmp/cache/';
 
+/*
+    public function setUp()
+    {
+        $this->_instance = new \Zend\Cache\Backend\Redis(array(
+            'host' => TESTS_ZEND_CACHE_BACKEND_REDIS_HOST,
+            'port' => TESTS_ZEND_CACHE_BACKEND_REDIS_PORT,
+        ));
+        $this->_instance->clean();
+    }
+
+    public function testGet()
+    {
+        $this->assertTrue($this->_instance->save('data', 'bar1'));
+        $this->assertEquals($this->_instance->load('bar1'), 'data');
+    }
+
+    public function testRemove()
+    {
+        $this->assertTrue($this->_instance->save('data', 'bar1'));
+        $this->assertEquals($this->_instance->remove('bar1'), 1);
+        $this->assertFalse($this->_instance->load('bar1'));
+    }
+
+    public function testExist()
+    {
+        $this->assertTrue($this->_instance->save('data', 'bar1'));
+        $this->assertEquals($this->_instance->test('bar1'), 1);
+    }
+
+    public function testNoExist()
+    {
+        $this->assertEquals($this->_instance->test('non_exists'), 0);
+    }
+*/
+
+
     public function setUp()
     {
         $this->mkdir();
@@ -17,20 +53,10 @@ class RedisTest extends \PHPUnit_Framework_TestCase
         if (!constant('TESTS_ZEND_CACHE_BACKEND_REDIS_ENABLED')) {
             $this->markTestSkipped('Zend_Cache redis adapter tests are not enabled');
         }
-        $serverValid = array(
+        $this->_instance = new \Zend\Cache\Backend\Redis(array(
             'host' => TESTS_ZEND_CACHE_BACKEND_REDIS_HOST,
             'port' => TESTS_ZEND_CACHE_BACKEND_REDIS_PORT,
-            'persistent' => TESTS_ZEND_CACHE_BACKEND_REDIS_PERSISTENT
-        );
-        $serverFail = array(
-            'host' => 'not.exist',
-            'port' => TESTS_ZEND_CACHE_BACKEND_REDIS_PORT,
-            'persistent' => TESTS_ZEND_CACHE_BACKEND_REDIS_PERSISTENT
-        );
-        $options = array(
-            'servers' => array($serverValid, $serverFail)
-        );
-        $this->_instance = new \Zend\Cache\Backend\Redis($options);
+        ));
         $this->_instance->setDirectives(array('logging' => true));
         $this->_instance->save('bar : data to cache', 'bar');
         $this->_instance->save('bar2 : data to cache', 'bar2');
@@ -146,17 +172,18 @@ class RedisTest extends \PHPUnit_Framework_TestCase
 
     public function testRemoveCorrectCall()
     {
-        $this->assertTrue($this->_instance->remove('bar'));
-        $this->assertFalse($this->_instance->test('bar'));
-        $this->assertFalse($this->_instance->remove('barbar'));
-        $this->assertFalse($this->_instance->test('barbar'));
+        $this->_instance->save('test', 'bar');
+        $this->assertEquals($this->_instance->test('bar'), 1);
+        $this->assertEquals($this->_instance->remove('bar'), 1);
+        $this->assertEquals($this->_instance->test('bar'), 0);
     }
 
     public function testTestWithANonExistingCacheId()
     {
-        $this->assertFalse($this->_instance->test('barbar_non_exists_key'));
+        $this->assertEquals($this->_instance->test('barbar_non_exists_key'), 0);
     }
 
+    /*
     public function testTestWithAnExistingCacheIdAndANullLifeTime()
     {
         $this->_instance->setDirectives(array('lifetime' => null));
@@ -168,7 +195,7 @@ class RedisTest extends \PHPUnit_Framework_TestCase
             $this->fail('test() return an incorrect integer');
         }
         return;
-    }
+    }*/
 
     public function testGetWithANonExistingCacheId()
     {
@@ -190,10 +217,11 @@ class RedisTest extends \PHPUnit_Framework_TestCase
     public function testCleanModeAll()
     {
         $this->assertTrue($this->_instance->clean('all'));
-        $this->assertFalse($this->_instance->test('bar'));
-        $this->assertFalse($this->_instance->test('bar2'));
+        $this->assertEquals($this->_instance->test('bar'), 0);
+        $this->assertEquals($this->_instance->test('bar2'), 0);
     }
 
+/*
     public function testCleanModeOld()
     {
         $this->_instance->___expire('bar2');
@@ -201,6 +229,6 @@ class RedisTest extends \PHPUnit_Framework_TestCase
         $this->assertTrue($this->_instance->test('bar') > 999999);
         $this->assertFalse($this->_instance->test('bar2'));
     }
-
+*/
 }
 
