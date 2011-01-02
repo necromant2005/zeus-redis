@@ -46,13 +46,17 @@ class Redis extends AbstractBackend
 
     public function save($data, $id, $tags = array(), $specificLifetime = false)
     {
-        //$lifetime = $this->getLifetime($specificLifetime);
+        $lifetime = $this->getLifetime($specificLifetime);
         $lengthId = strlen($id);
         $lengthData = strlen($data);
         $result = $this->_call('*3' . self::DELIMITER
             . '$3' . self::DELIMITER . 'SET' . self::DELIMITER .
             '$' . $lengthId . self::DELIMITER . $id . self::DELIMITER .
             '$' . $lengthData . self::DELIMITER . $data . self::DELIMITER);
+        if ($lifetime) {
+            $this->_call('EXPIRE '. $id . ' ' . $lifetime . self::DELIMITER);
+        }
+
         if (count($tags) > 0) {
             $this->_log(self::TAGS_UNSUPPORTED_BY_SAVE_OF_REDIS_BACKEND);
         }

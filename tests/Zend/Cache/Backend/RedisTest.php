@@ -183,19 +183,12 @@ class RedisTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals($this->_instance->test('barbar_non_exists_key'), 0);
     }
 
-    /*
+
     public function testTestWithAnExistingCacheIdAndANullLifeTime()
     {
         $this->_instance->setDirectives(array('lifetime' => null));
-        $res = $this->_instance->test('bar');
-        if (!$res) {
-            $this->fail('test() return false');
-        }
-        if (!($res > 999999)) {
-            $this->fail('test() return an incorrect integer');
-        }
-        return;
-    }*/
+        $this->assertEquals($this->_instance->test('bar'), 1);
+    }
 
     public function testGetWithANonExistingCacheId()
     {
